@@ -1,13 +1,16 @@
 package com.expensetracker.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -15,6 +18,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.expensetracker.domain.Categories
 import com.expensetracker.domain.Transaction
 import com.expensetracker.util.asCurrency
 import com.expensetracker.util.asDayLabel
@@ -47,6 +53,24 @@ fun TransactionsScreen(
 ) {
     var pendingDelete by remember { mutableStateOf<Transaction?>(null) }
     var showClearAll by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+
+    // Categories that actually occur this month, in canonical order (any unknown ones last).
+    val presentCategories = remember(transactions) {
+        transactions.map { it.category }.distinct().sortedBy {
+            val i = Categories.DEFAULTS.indexOf(it)
+            if (i < 0) Int.MAX_VALUE else i
+        }
+    }
+    // If the active filter's last transaction was deleted, fall back to showing all.
+    LaunchedEffect(presentCategories) {
+        val sel = selectedCategory
+        if (sel != null && sel !in presentCategories) selectedCategory = null
+    }
+    val visibleTransactions = remember(transactions, selectedCategory) {
+        val sel = selectedCategory
+        if (sel == null) transactions else transactions.filter { it.category == sel }
+    }
 
     Scaffold(
         topBar = {
@@ -82,18 +106,27 @@ fun TransactionsScreen(
                 )
             }
         } else {
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                items(transactions, key = { it.id }) { txn ->
-                    TransactionRow(
-                        txn = txn,
-                        onClick = { onEdit(txn) },
-                        onDelete = { pendingDelete = txn }
+                if (presentCategories.size > 1) {
+                    CategoryFilterRow(
+                        categories = presentCategories,
+                        selected = selectedCategory,
+                        onSelect = { selectedCategory = it }
                     )
-                    HorizontalDivider()
+                }
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(visibleTransactions, key = { it.id }) { txn ->
+                        TransactionRow(
+                            txn = txn,
+                            onClick = { onEdit(txn) },
+                            onDelete = { pendingDelete = txn }
+                        )
+                        HorizontalDivider()
+                    }
                 }
             }
         }
@@ -142,6 +175,35 @@ fun TransactionsScreen(
                 TextButton(onClick = { showClearAll = false }) { Text("Cancel") }
             }
         )
+    }
+}
+
+/** Horizontally scrollable category filter: an "All" chip plus one chip per category present. */
+@Composable
+private fun CategoryFilterRow(
+    categories: List<String>,
+    selected: String?,
+    onSelect: (String?) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            FilterChip(
+                selected = selected == null,
+                onClick = { onSelect(null) },
+                label = { Text("All") }
+            )
+        }
+        items(categories) { category ->
+            FilterChip(
+                selected = selected == category,
+                onClick = { onSelect(category) },
+                label = { Text(category) }
+            )
+        }
     }
 }
 

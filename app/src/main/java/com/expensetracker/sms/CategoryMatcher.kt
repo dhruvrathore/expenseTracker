@@ -9,9 +9,15 @@ object CategoryMatcher {
 
     // First matching rule wins, so order from most specific to most general.
     private val RULES: List<Pair<List<String>, String>> = listOf(
+        // Restaurants & prepared-food delivery.
         listOf(
-            "zomato", "swiggy", "restaurant", "cafe", "dominos", "mcdonald", "kfc",
-            "bigbasket", "blinkit", "grofers", "zepto", "dunzo"
+            "zomato", "swiggy", "restaurant", "cafe", "coffee", "dominos", "mcdonald", "kfc",
+            "pizza", "burger", "faasos", "eatfit", "dineout", "biryani", "dunzo"
+        ) to "Eating Out",
+        // Groceries & instant grocery delivery. Checked before Utilities so "jiomart" beats "jio".
+        listOf(
+            "bigbasket", "blinkit", "grofers", "zepto", "instamart", "jiomart", "dmart",
+            "reliancefresh", "grocery", "supermarket"
         ) to "Food",
         listOf(
             "ola", "uber", "rapido", "irctc", "redbus", "metro", "fuel", "petrol",
@@ -20,8 +26,8 @@ object CategoryMatcher {
         listOf("amazon", "flipkart", "myntra", "ajio", "meesho", "nykaa", "tatacliq") to "Shopping",
         listOf(
             "electricity", "broadband", "recharge", "airtel", "jio", "vodafone",
-            "bescom", "dth", "postpaid", "prepaid", "bill"
-        ) to "Bills",
+            "bescom", "dth", "postpaid", "prepaid", "bill", "water", "gas"
+        ) to "Utilities",
         listOf("netflix", "spotify", "hotstar", "bookmyshow", "pvr", "inox") to "Entertainment",
         listOf("pharmacy", "pharmeasy", "1mg", "apollo", "hospital", "clinic", "medical", "diagnostic") to "Health",
         listOf("rent", "landlord", "housing") to "Rent",

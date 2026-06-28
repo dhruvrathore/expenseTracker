@@ -116,9 +116,9 @@ class MonthAndAlertViewModelTest {
         assertNull(vm.pendingAlert.value)
 
         // Limit set, but spending stays under 90%.
-        vm.setCategoryLimit("Bills", "1000")
+        vm.setCategoryLimit("Utilities", "1000")
         advanceUntilIdle()
-        vm.addTransaction("100", "Electricity", "Bills")
+        vm.addTransaction("100", "Electricity", "Utilities")
         advanceUntilIdle()
         assertNull(vm.pendingAlert.value)
     }

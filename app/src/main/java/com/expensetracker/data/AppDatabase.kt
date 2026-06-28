@@ -10,7 +10,7 @@ import java.time.YearMonth
 
 @Database(
     entities = [MonthlyBudgetEntity::class, TransactionEntity::class, CategoryLimitEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -82,6 +82,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // v3 -> v4: the "Bills" category was renamed to "Utilities"; carry existing rows over.
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE `transactions` SET `category` = 'Utilities' WHERE `category` = 'Bills'")
+                db.execSQL("UPDATE `category_limits` SET `category` = 'Utilities' WHERE `category` = 'Bills'")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -91,7 +99,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "expense-tracker.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
             }
     }
 }

@@ -139,8 +139,10 @@ class SmsParserTest {
     }
 
     @Test
-    fun `category matcher maps known merchants and defaults to Other`() {
-        assertEquals("Food", CategoryMatcher.categorize("swiggy"))
+    fun `category matcher splits eating out from groceries and defaults to Other`() {
+        assertEquals("Eating Out", CategoryMatcher.categorize("swiggy"))
+        assertEquals("Eating Out", CategoryMatcher.categorize("ZOMATO"))
+        assertEquals("Food", CategoryMatcher.categorize("BigBasket"))
         assertEquals("Transport", CategoryMatcher.categorize("Uber"))
         assertEquals("Shopping", CategoryMatcher.categorize("AMAZON"))
         assertEquals("Other", CategoryMatcher.categorize("Some Random Merchant"))
