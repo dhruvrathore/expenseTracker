@@ -31,6 +31,10 @@ object CategoryMatcher {
         listOf("netflix", "spotify", "hotstar", "bookmyshow", "pvr", "inox") to "Entertainment",
         listOf("pharmacy", "pharmeasy", "1mg", "apollo", "hospital", "clinic", "medical", "diagnostic") to "Health",
         listOf("rent", "landlord", "housing") to "Rent",
+        listOf(
+            "irctc", "makemytrip", "goibibo", "yatra", "cleartrip", "airbnb", "oyo", "indigo",
+            "spicejet", "vistara", "airlines", "airways", "flight", "hotel"
+        ) to "Travel",
     )
 
     fun categorize(text: String): String {

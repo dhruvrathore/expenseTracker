@@ -42,9 +42,9 @@ interface TransactionDao {
 
     @Query(
         "UPDATE transactions SET amount = :amount, description = :description, " +
-            "category = :category WHERE id = :id"
+            "category = :category, tag = :tag WHERE id = :id"
     )
-    suspend fun updateFields(id: Long, amount: Double, description: String, category: String)
+    suspend fun updateFields(id: Long, amount: Double, description: String, category: String, tag: String?)
 
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteById(id: Long)

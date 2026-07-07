@@ -63,7 +63,8 @@ class RoomExpenseRepository(
                 description = transaction.description,
                 category = transaction.category,
                 month = month,
-                timestamp = transaction.timestamp.takeIf { it > 0L } ?: now()
+                timestamp = transaction.timestamp.takeIf { it > 0L } ?: now(),
+                tag = transaction.tag
             )
         )
     }
@@ -72,9 +73,10 @@ class RoomExpenseRepository(
         id: Long,
         amount: Double,
         description: String,
-        category: String
+        category: String,
+        tag: String?
     ) {
-        transactionDao.updateFields(id, amount, description, category)
+        transactionDao.updateFields(id, amount, description, category, tag)
     }
 
     override suspend fun deleteTransaction(id: Long) {
@@ -90,6 +92,7 @@ class RoomExpenseRepository(
         amount = amount,
         description = description,
         category = category,
-        timestamp = timestamp
+        timestamp = timestamp,
+        tag = tag
     )
 }

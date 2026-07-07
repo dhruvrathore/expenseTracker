@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
@@ -51,7 +52,7 @@ private val sheetFieldShape = RoundedCornerShape(14.dp)
 @Composable
 fun SmsConfirmSheet(
     transaction: ParsedTransaction,
-    onSave: (amount: String, description: String, category: String) -> Boolean,
+    onSave: (amount: String, description: String, category: String, tag: String) -> Boolean,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -66,6 +67,7 @@ fun SmsConfirmSheet(
     var category by remember(transaction) {
         mutableStateOf(CategoryMatcher.categorize(transaction.merchant))
     }
+    var tag by remember(transaction) { mutableStateOf("") }
     var categoryExpanded by remember(transaction) { mutableStateOf(false) }
     var amountError by remember(transaction) { mutableStateOf(false) }
 
@@ -159,9 +161,20 @@ fun SmsConfirmSheet(
                 }
             }
 
+            OutlinedTextField(
+                value = tag,
+                onValueChange = { tag = it },
+                label = { Text("Tag (optional)") },
+                placeholder = { Text("e.g. Ooty trip") },
+                leadingIcon = { Icon(Icons.Filled.Label, contentDescription = null) },
+                singleLine = true,
+                shape = sheetFieldShape,
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Button(
                 onClick = {
-                    if (onSave(amount, description, category)) onDismiss() else amountError = true
+                    if (onSave(amount, description, category, tag)) onDismiss() else amountError = true
                 },
                 shape = sheetFieldShape,
                 modifier = Modifier

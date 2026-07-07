@@ -234,10 +234,11 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                         initialAmount = txn.amount.toString().removeSuffix(".0"),
                         initialDescription = txn.description,
                         initialCategory = txn.category,
+                        initialTag = txn.tag.orEmpty(),
                         suggestions = suggestions,
                         onBack = { navController.popBackStack() },
-                        onSave = { amount, description, category ->
-                            viewModel.updateTransaction(txn.id, amount, description, category)
+                        onSave = { amount, description, category, tag ->
+                            viewModel.updateTransaction(txn.id, amount, description, category, tag)
                         }
                     )
                 }

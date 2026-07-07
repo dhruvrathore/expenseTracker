@@ -166,7 +166,7 @@ class ExpenseViewModel(
      * transaction pushes its category to/over 90% of its limit.
      * @return true if accepted, false if the amount was blank, non-numeric, or not positive.
      */
-    fun addTransaction(amountInput: String, description: String, category: String): Boolean {
+    fun addTransaction(amountInput: String, description: String, category: String, tag: String = ""): Boolean {
         val amount = amountInput.trim().toDoubleOrNull() ?: return false
         if (amount <= 0.0) return false
 
@@ -174,7 +174,12 @@ class ExpenseViewModel(
         viewModelScope.launch {
             repository.addTransaction(
                 currentMonth,
-                Transaction(amount = amount, description = description.trim(), category = category)
+                Transaction(
+                    amount = amount,
+                    description = description.trim(),
+                    category = category,
+                    tag = tag.trim().ifBlank { null }
+                )
             )
         }
         return true
@@ -184,7 +189,13 @@ class ExpenseViewModel(
      * Validates and updates a transaction's fields (month and timestamp are preserved).
      * @return true if accepted, false if the amount was blank, non-numeric, or not positive.
      */
-    fun updateTransaction(id: Long, amountInput: String, description: String, category: String): Boolean {
+    fun updateTransaction(
+        id: Long,
+        amountInput: String,
+        description: String,
+        category: String,
+        tag: String = ""
+    ): Boolean {
         val amount = amountInput.trim().toDoubleOrNull() ?: return false
         if (amount <= 0.0) return false
 
@@ -198,7 +209,7 @@ class ExpenseViewModel(
         raiseAlert(category, resultingSpent)
 
         viewModelScope.launch {
-            repository.updateTransaction(id, amount, description.trim(), category)
+            repository.updateTransaction(id, amount, description.trim(), category, tag.trim().ifBlank { null })
         }
         return true
     }

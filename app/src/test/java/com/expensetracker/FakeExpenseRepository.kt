@@ -76,12 +76,13 @@ class FakeExpenseRepository(
         id: Long,
         amount: Double,
         description: String,
-        category: String
+        category: String,
+        tag: String?
     ) {
         txns.value = txns.value.mapValues { (_, list) ->
             list.map { txn ->
                 if (txn.id == id) {
-                    txn.copy(amount = amount, description = description, category = category)
+                    txn.copy(amount = amount, description = description, category = category, tag = tag)
                 } else {
                     txn
                 }

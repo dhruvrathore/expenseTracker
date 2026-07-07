@@ -10,7 +10,7 @@ import java.time.YearMonth
 
 @Database(
     entities = [MonthlyBudgetEntity::class, TransactionEntity::class, CategoryLimitEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -90,6 +90,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // v4 -> v5: add an optional free-text tag to transactions (e.g. "Ooty" on a Travel expense).
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `tag` TEXT")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -99,7 +106,8 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "expense-tracker.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .build().also { instance = it }
             }
     }
 }

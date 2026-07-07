@@ -163,8 +163,9 @@ private fun TransactionLine(txn: Transaction) {
                 txn.description.ifBlank { txn.category },
                 style = MaterialTheme.typography.bodyLarge
             )
+            val tagSuffix = txn.tag?.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
             Text(
-                "${txn.category} · ${txn.timestamp.asDayLabel()}",
+                "${txn.category} · ${txn.timestamp.asDayLabel()}$tagSuffix",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

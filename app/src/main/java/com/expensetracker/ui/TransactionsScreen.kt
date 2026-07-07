@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -23,6 +24,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,6 +56,7 @@ fun TransactionsScreen(
     var pendingDelete by remember { mutableStateOf<Transaction?>(null) }
     var showClearAll by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
 
     // Categories that actually occur this month, in canonical order (any unknown ones last).
     val presentCategories = remember(transactions) {
@@ -67,9 +70,16 @@ fun TransactionsScreen(
         val sel = selectedCategory
         if (sel != null && sel !in presentCategories) selectedCategory = null
     }
-    val visibleTransactions = remember(transactions, selectedCategory) {
+    val visibleTransactions = remember(transactions, selectedCategory, searchQuery) {
         val sel = selectedCategory
-        if (sel == null) transactions else transactions.filter { it.category == sel }
+        val query = searchQuery.trim()
+        transactions
+            .filter { sel == null || it.category == sel }
+            .filter {
+                query.isEmpty() ||
+                    it.description.contains(query, ignoreCase = true) ||
+                    it.tag?.contains(query, ignoreCase = true) == true
+            }
     }
 
     Scaffold(
@@ -111,12 +121,37 @@ fun TransactionsScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text("Search") },
+                    placeholder = { Text("Description or tag, e.g. Ooty") },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
                 if (presentCategories.size > 1) {
                     CategoryFilterRow(
                         categories = presentCategories,
                         selected = selectedCategory,
                         onSelect = { selectedCategory = it }
                     )
+                }
+                if (visibleTransactions.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No transactions match your search.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(visibleTransactions, key = { it.id }) { txn ->
@@ -221,8 +256,9 @@ private fun TransactionRow(txn: Transaction, onClick: () -> Unit, onDelete: () -
                 txn.description.ifBlank { txn.category },
                 style = MaterialTheme.typography.bodyLarge
             )
+            val tagSuffix = txn.tag?.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
             Text(
-                "${txn.category} · ${txn.timestamp.asDayLabel()}",
+                "${txn.category} · ${txn.timestamp.asDayLabel()}$tagSuffix",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

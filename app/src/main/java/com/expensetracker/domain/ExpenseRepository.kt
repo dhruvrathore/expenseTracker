@@ -30,7 +30,7 @@ interface ExpenseRepository {
     suspend fun addTransaction(month: String, transaction: Transaction)
 
     /** Updates a transaction's editable fields, preserving its month and timestamp. */
-    suspend fun updateTransaction(id: Long, amount: Double, description: String, category: String)
+    suspend fun updateTransaction(id: Long, amount: Double, description: String, category: String, tag: String?)
     suspend fun deleteTransaction(id: Long)
 
     /** Deletes all transactions in [month]. Budgets and category limits are kept. */

@@ -18,7 +18,8 @@ data class TransactionEntity(
     val description: String,
     val category: String,
     val month: String,
-    val timestamp: Long
+    val timestamp: Long,
+    val tag: String? = null
 )
 
 /** Per-category spending limit, one row per (month, category). */

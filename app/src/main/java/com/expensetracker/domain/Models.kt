@@ -6,7 +6,8 @@ data class Transaction(
     val amount: Double,
     val description: String,
     val category: String,
-    val timestamp: Long = 0L
+    val timestamp: Long = 0L,
+    val tag: String? = null
 )
 
 /** The user's overall monthly spending limit. */

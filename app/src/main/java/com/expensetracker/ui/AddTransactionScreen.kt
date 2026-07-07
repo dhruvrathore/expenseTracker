@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,16 +47,18 @@ private val fieldShape = RoundedCornerShape(14.dp)
 @Composable
 fun AddTransactionScreen(
     onBack: () -> Unit,
-    onSave: (amount: String, description: String, category: String) -> Boolean,
+    onSave: (amount: String, description: String, category: String, tag: String) -> Boolean,
     title: String = "Add transaction",
     initialAmount: String = "",
     initialDescription: String = "",
     initialCategory: String = CATEGORIES.first(),
+    initialTag: String = "",
     suggestions: List<String> = emptyList()
 ) {
     var amount by remember { mutableStateOf(initialAmount) }
     var description by remember { mutableStateOf(initialDescription) }
     var category by remember { mutableStateOf(initialCategory) }
+    var tag by remember { mutableStateOf(initialTag) }
     var categoryExpanded by remember { mutableStateOf(false) }
     var amountError by remember { mutableStateOf(false) }
 
@@ -156,9 +159,20 @@ fun AddTransactionScreen(
                 }
             }
 
+            OutlinedTextField(
+                value = tag,
+                onValueChange = { tag = it },
+                label = { Text("Tag (optional)") },
+                placeholder = { Text("e.g. Ooty trip") },
+                leadingIcon = { Icon(Icons.Filled.Label, contentDescription = null) },
+                singleLine = true,
+                shape = fieldShape,
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Button(
                 onClick = {
-                    if (onSave(amount, description, category)) {
+                    if (onSave(amount, description, category, tag)) {
                         onBack()
                     } else {
                         amountError = true
