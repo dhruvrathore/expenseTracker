@@ -259,6 +259,7 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
         pendingSms?.let { txn ->
             SmsConfirmSheet(
                 transaction = txn,
+                suggestions = suggestions,
                 onSave = viewModel::addTransaction,
                 onDismiss = SmsTransactionBus::clear
             )

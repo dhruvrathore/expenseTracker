@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -42,6 +43,19 @@ import com.expensetracker.domain.Categories
 
 private val CATEGORIES = Categories.DEFAULTS
 private val fieldShape = RoundedCornerShape(14.dp)
+
+/**
+ * Past descriptions worth suggesting for the current input: non-exact, case-insensitive matches
+ * (or every suggestion when nothing's typed yet), capped so the chip row stays a single glance.
+ */
+internal fun matchingDescriptionSuggestions(description: String, suggestions: List<String>): List<String> {
+    val query = description.trim()
+    return if (query.isEmpty()) {
+        suggestions
+    } else {
+        suggestions.filter { it.contains(query, ignoreCase = true) && !it.equals(query, ignoreCase = true) }
+    }.take(6)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,12 +77,7 @@ fun AddTransactionScreen(
     var amountError by remember { mutableStateOf(false) }
 
     val matchingSuggestions = remember(description, suggestions) {
-        val query = description.trim()
-        if (query.isEmpty()) {
-            suggestions
-        } else {
-            suggestions.filter { it.contains(query, ignoreCase = true) && !it.equals(query, ignoreCase = true) }
-        }.take(6)
+        matchingDescriptionSuggestions(description, suggestions)
     }
 
     Scaffold(
@@ -197,12 +206,12 @@ fun AddTransactionScreen(
 /** Lightweight, tappable suggestion chips shown below the description field (no popup). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DescriptionSuggestions(
+internal fun DescriptionSuggestions(
     suggestions: List<String>,
     onSelect: (String) -> Unit
 ) {
     FlowRow(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("description_suggestions"),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         suggestions.forEach { suggestion ->

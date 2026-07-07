@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -53,7 +54,8 @@ private val sheetFieldShape = RoundedCornerShape(14.dp)
 fun SmsConfirmSheet(
     transaction: ParsedTransaction,
     onSave: (amount: String, description: String, category: String, tag: String) -> Boolean,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    suggestions: List<String> = emptyList()
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -70,6 +72,10 @@ fun SmsConfirmSheet(
     var tag by remember(transaction) { mutableStateOf("") }
     var categoryExpanded by remember(transaction) { mutableStateOf(false) }
     var amountError by remember(transaction) { mutableStateOf(false) }
+
+    val matchingSuggestions = remember(description, suggestions) {
+        matchingDescriptionSuggestions(description, suggestions)
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -124,8 +130,15 @@ fun SmsConfirmSheet(
                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
                 singleLine = true,
                 shape = sheetFieldShape,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().testTag("description_field")
             )
+
+            if (matchingSuggestions.isNotEmpty()) {
+                DescriptionSuggestions(
+                    suggestions = matchingSuggestions,
+                    onSelect = { description = it }
+                )
+            }
 
             ExposedDropdownMenuBox(
                 expanded = categoryExpanded,
