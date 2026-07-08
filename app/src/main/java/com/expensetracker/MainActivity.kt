@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
@@ -71,6 +72,7 @@ import com.expensetracker.ui.HistoryMonthScreen
 import com.expensetracker.ui.HistoryScreen
 import com.expensetracker.ui.HomeScreen
 import com.expensetracker.ui.IncomeScreen
+import com.expensetracker.ui.SavingsScreen
 import com.expensetracker.ui.SmsConfirmSheet
 import com.expensetracker.ui.TransactionsScreen
 import com.expensetracker.ui.theme.ExpenseTrackerTheme
@@ -90,6 +92,7 @@ private object Routes {
     const val ADD = "add"
     const val CATEGORIES = "categories"
     const val INCOME = "income"
+    const val SAVINGS = "savings"
     const val HISTORY = "history"
     const val HISTORY_MONTH = "history/{month}"
     const val TRANSACTIONS = "transactions"
@@ -137,7 +140,8 @@ class MainActivity : ComponentActivity() {
                 amount = amount,
                 merchant = intent.getStringExtra(SmsNotifier.EXTRA_MERCHANT) ?: "Unknown",
                 isDebit = intent.getBooleanExtra(SmsNotifier.EXTRA_IS_DEBIT, true),
-                smsTimestamp = intent.getLongExtra(SmsNotifier.EXTRA_TIMESTAMP, 0L)
+                smsTimestamp = intent.getLongExtra(SmsNotifier.EXTRA_TIMESTAMP, 0L),
+                isSavingsTransfer = intent.getBooleanExtra(SmsNotifier.EXTRA_IS_SAVINGS, false)
             )
         )
     }
@@ -150,6 +154,7 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
     val state by viewModel.uiState.collectAsState()
     val categories by viewModel.categoryState.collectAsState()
     val income by viewModel.income.collectAsState()
+    val savingsEntries by viewModel.savingsEntries.collectAsState()
     val historyMonths by viewModel.historyMonths.collectAsState()
     val alert by viewModel.pendingAlert.collectAsState()
     val suggestions by viewModel.descriptionSuggestions.collectAsState()
@@ -202,6 +207,10 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                     closeDrawer()
                     if (route != Routes.INCOME) navController.navigate(Routes.INCOME)
                 }
+                DrawerItem(Icons.Filled.Savings, "Savings and investments", route == Routes.SAVINGS) {
+                    closeDrawer()
+                    if (route != Routes.SAVINGS) navController.navigate(Routes.SAVINGS)
+                }
                 DrawerItem(Icons.Filled.DateRange, "History", route == Routes.HISTORY) {
                     closeDrawer()
                     if (route != Routes.HISTORY) navController.navigate(Routes.HISTORY)
@@ -240,6 +249,15 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                     onSetIncome = viewModel::setIncome
                 )
             }
+            composable(Routes.SAVINGS) {
+                SavingsScreen(
+                    savingsEntries = savingsEntries,
+                    income = income,
+                    onOpenDrawer = openDrawer,
+                    onAddSavings = viewModel::addSavings,
+                    onDeleteSavingsEntry = viewModel::deleteSavingsEntry
+                )
+            }
             composable(Routes.HISTORY) {
                 HistoryScreen(
                     months = historyMonths,
@@ -251,7 +269,7 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                 viewModel,
                 onBack = { navController.popBackStack() },
                 onExport = { month, view ->
-                    val csv = buildTransactionsCsv(view.transactions)
+                    val csv = buildTransactionsCsv(view.transactions, view.savingsEntries)
                     downloadCsv("expense_$month.csv", csv)
                 }
             )
@@ -310,6 +328,7 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                 transaction = txn,
                 suggestions = suggestions,
                 onSave = viewModel::addTransaction,
+                onSaveSavings = viewModel::addSavingsFromSms,
                 onDismiss = SmsTransactionBus::clear
             )
         }

@@ -25,6 +25,7 @@ object SmsNotifier {
     const val EXTRA_AMOUNT = "sms_amount"
     const val EXTRA_MERCHANT = "sms_merchant"
     const val EXTRA_IS_DEBIT = "sms_is_debit"
+    const val EXTRA_IS_SAVINGS = "sms_is_savings"
     const val EXTRA_TIMESTAMP = "sms_timestamp"
 
     fun createChannel(context: Context) {
@@ -48,6 +49,7 @@ object SmsNotifier {
             putExtra(EXTRA_AMOUNT, transaction.amount)
             putExtra(EXTRA_MERCHANT, transaction.merchant)
             putExtra(EXTRA_IS_DEBIT, transaction.isDebit)
+            putExtra(EXTRA_IS_SAVINGS, transaction.isSavingsTransfer)
             putExtra(EXTRA_TIMESTAMP, transaction.smsTimestamp)
         }
         val pendingIntent = PendingIntent.getActivity(

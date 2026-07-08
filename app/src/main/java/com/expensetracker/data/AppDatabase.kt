@@ -11,9 +11,9 @@ import java.time.YearMonth
 @Database(
     entities = [
         MonthlyBudgetEntity::class, TransactionEntity::class, CategoryLimitEntity::class,
-        IncomeEntity::class
+        IncomeEntity::class, SavingsEntryEntity::class
     ],
-    version = 7,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -21,6 +21,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun categoryLimitDao(): CategoryLimitDao
     abstract fun incomeDao(): IncomeDao
+    abstract fun savingsEntryDao(): SavingsEntryDao
 
     companion object {
         // v1 -> v2: add the per-category limits table.
@@ -123,6 +124,45 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // v7 -> v8: add a savings/investments table (one running total per month), independent of
+        // spending and income. Superseded by v8 -> v9 below, which splits it into per-entry rows.
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `savings` " +
+                        "(`month` TEXT NOT NULL, `savings` REAL NOT NULL, PRIMARY KEY(`month`))"
+                )
+            }
+        }
+
+        // v8 -> v9: replace the single monthly savings total with individual contribution entries,
+        // so the Savings screen can list history instead of only showing/editing one number. Each
+        // month's existing total becomes one legacy entry, dated to the start of that month.
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `savings_entries` " +
+                        "(`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `amount` REAL NOT NULL, " +
+                        "`description` TEXT NOT NULL, `month` TEXT NOT NULL, `timestamp` INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "INSERT INTO `savings_entries` (`amount`, `description`, `month`, `timestamp`) " +
+                        "SELECT `savings`, 'Savings & Investments', `month`, " +
+                        "CAST(strftime('%s', `month` || '-01') AS INTEGER) * 1000 FROM `savings`"
+                )
+                db.execSQL("DROP TABLE `savings`")
+            }
+        }
+
+        // v9 -> v10: split each entry into Savings vs Investment, plus an optional free-text tag
+        // (e.g. "FD", "MF", "Stock", "Gold"). Existing rows default to Savings with no tag.
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `savings_entries` ADD COLUMN `kind` TEXT NOT NULL DEFAULT 'SAVINGS'")
+                db.execSQL("ALTER TABLE `savings_entries` ADD COLUMN `tag` TEXT")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -133,7 +173,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "expense-tracker.db"
                 ).addMigrations(
-                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+                    MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10
                 ).build().also { instance = it }
             }
     }

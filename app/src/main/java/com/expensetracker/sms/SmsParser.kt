@@ -3,12 +3,15 @@ package com.expensetracker.sms
 /**
  * A transaction detected in a bank/payment SMS. [merchant] is a best-effort payee name used as the
  * default description; [isDebit] is true for money leaving the account (i.e. an expense).
+ * [isSavingsTransfer] is true when the debit looks like a transfer to savings/investments (SIP,
+ * brokerage, FD/RD) rather than spending — only ever set alongside [isDebit].
  */
 data class ParsedTransaction(
     val amount: Double,
     val merchant: String,
     val isDebit: Boolean,
-    val smsTimestamp: Long
+    val smsTimestamp: Long,
+    val isSavingsTransfer: Boolean = false
 )
 
 /**
@@ -71,7 +74,8 @@ object SmsParser {
             amount = amount,
             merchant = extractMerchant(text) ?: "Unknown",
             isDebit = hasDebit,
-            smsTimestamp = timestamp
+            smsTimestamp = timestamp,
+            isSavingsTransfer = hasDebit && SavingsMatcher.isSavingsTransfer(text)
         )
     }
 

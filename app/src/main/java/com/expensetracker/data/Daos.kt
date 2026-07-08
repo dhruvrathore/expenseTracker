@@ -79,3 +79,18 @@ interface IncomeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(income: IncomeEntity)
 }
+
+@Dao
+interface SavingsEntryDao {
+    @Query("SELECT * FROM savings_entries WHERE month = :month ORDER BY timestamp DESC, id DESC")
+    fun observeForMonth(month: String): Flow<List<SavingsEntryEntity>>
+
+    @Query("SELECT * FROM savings_entries ORDER BY timestamp DESC, id DESC")
+    fun observeAll(): Flow<List<SavingsEntryEntity>>
+
+    @Insert
+    suspend fun insert(entry: SavingsEntryEntity)
+
+    @Query("DELETE FROM savings_entries WHERE id = :id")
+    suspend fun deleteById(id: Long)
+}

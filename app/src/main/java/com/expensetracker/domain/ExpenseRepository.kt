@@ -15,8 +15,14 @@ interface ExpenseRepository {
     /** Take-home income for [month], if set. Independent of the monthly spending limit. */
     fun income(month: String): Flow<Double?>
 
+    /** Savings/investment contributions in [month], most-recent first. Independent of spending and income. */
+    fun savingsEntries(month: String): Flow<List<SavingsEntry>>
+
     /** Every transaction across all months — used to suggest past descriptions. */
     val allTransactions: Flow<List<Transaction>>
+
+    /** Every savings/investment contribution across all months — used for the full-history CSV export. */
+    val allSavingsEntries: Flow<List<SavingsEntry>>
 
     /** All months that have any data, most-recent first — used to build history. */
     val availableMonths: Flow<List<String>>
@@ -31,6 +37,11 @@ interface ExpenseRepository {
     suspend fun setMonthlyLimit(month: String, limit: Double)
     suspend fun setCategoryLimit(month: String, category: String, limit: Double)
     suspend fun setIncome(month: String, income: Double)
+
+    /** Records a savings/investment contribution (manual or SMS-confirmed) in [month]. */
+    suspend fun addSavingsEntry(month: String, amount: Double, description: String, kind: SavingsKind, tag: String?)
+    suspend fun deleteSavingsEntry(id: Long)
+
     suspend fun addTransaction(month: String, transaction: Transaction)
 
     /** Updates a transaction's editable fields, preserving its month and timestamp. */

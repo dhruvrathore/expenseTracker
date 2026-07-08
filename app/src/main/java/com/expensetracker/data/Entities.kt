@@ -36,3 +36,15 @@ data class IncomeEntity(
     @PrimaryKey val month: String,
     val income: Double
 )
+
+/** A single contribution to savings/investments. Independent of spending and income. */
+@Entity(tableName = "savings_entries")
+data class SavingsEntryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val amount: Double,
+    val description: String,
+    val kind: String,
+    val tag: String? = null,
+    val month: String,
+    val timestamp: Long
+)

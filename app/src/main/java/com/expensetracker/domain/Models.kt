@@ -15,6 +15,20 @@ data class Budget(
     val monthlyLimit: Double
 )
 
+/** Whether a savings/investment entry is money set aside (FD, RD, plain savings) or invested. */
+enum class SavingsKind(val label: String) { SAVINGS("Savings"), INVESTMENT("Investment") }
+
+/** A single contribution to savings/investments (manual or SMS-confirmed), independent of spending. */
+data class SavingsEntry(
+    val id: Long = 0,
+    val amount: Double,
+    val description: String,
+    val kind: SavingsKind = SavingsKind.SAVINGS,
+    val tag: String? = null,
+    val month: String,
+    val timestamp: Long = 0L
+)
+
 /** A spending limit configured for a single category. */
 data class CategoryLimit(
     val category: String,
@@ -53,5 +67,6 @@ data class MonthView(
     val remaining: Double,
     val isOverBudget: Boolean,
     val categories: List<CategorySummary>,
-    val transactions: List<Transaction>
+    val transactions: List<Transaction>,
+    val savingsEntries: List<SavingsEntry> = emptyList()
 )

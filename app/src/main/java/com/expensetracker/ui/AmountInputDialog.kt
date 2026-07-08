@@ -32,7 +32,8 @@ fun AmountInputDialog(
     onConfirm: (String) -> String?,
     onDismiss: () -> Unit,
     label: String = "Amount",
-    icon: ImageVector = Icons.Filled.AccountBalanceWallet
+    icon: ImageVector = Icons.Filled.AccountBalanceWallet,
+    confirmLabel: String = "Save"
 ) {
     var text by remember { mutableStateOf(initialValue) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -60,7 +61,7 @@ fun AmountInputDialog(
             )
         },
         confirmButton = {
-            Button(onClick = { error = onConfirm(text) }) { Text("Save") }
+            Button(onClick = { error = onConfirm(text) }) { Text(confirmLabel) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }

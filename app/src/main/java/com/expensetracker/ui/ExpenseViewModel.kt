@@ -10,6 +10,8 @@ import com.expensetracker.domain.CategorySummary
 import com.expensetracker.domain.ExpenseRepository
 import com.expensetracker.domain.LimitValidator
 import com.expensetracker.domain.MonthView
+import com.expensetracker.domain.SavingsEntry
+import com.expensetracker.domain.SavingsKind
 import com.expensetracker.domain.Transaction
 import com.expensetracker.domain.TransactionSuggestions
 import com.expensetracker.util.asCurrency
@@ -56,8 +58,9 @@ class ExpenseViewModel(
         combine(
             repository.budget(month),
             repository.categoryLimits(month),
-            repository.transactions(month)
-        ) { budget, limits, transactions ->
+            repository.transactions(month),
+            repository.savingsEntries(month)
+        ) { budget, limits, transactions, savingsEntries ->
             val limit = budget?.monthlyLimit ?: 0.0
             MonthView(
                 month = month,
@@ -71,7 +74,8 @@ class ExpenseViewModel(
                     limits = limits.associate { it.category to it.limit },
                     transactions = transactions
                 ),
-                transactions = transactions
+                transactions = transactions,
+                savingsEntries = savingsEntries
             )
         }
 
@@ -122,6 +126,14 @@ class ExpenseViewModel(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = null
+        )
+
+    /** This month's savings/investment contributions, most-recent first. Independent of spending and income. */
+    val savingsEntries: StateFlow<List<SavingsEntry>> =
+        currentMonthView.map { it.savingsEntries }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
         )
 
     private val _pendingAlert = MutableStateFlow<CategoryAlert?>(null)
@@ -183,6 +195,41 @@ class ExpenseViewModel(
     }
 
     /**
+     * Validates and records a manually entered savings/investment contribution for the current month.
+     * @return true if accepted, false if the amount was blank, non-numeric, or not positive.
+     */
+    fun addSavings(amountInput: String, kind: SavingsKind, tag: String = ""): Boolean {
+        val amount = amountInput.trim().toDoubleOrNull() ?: return false
+        if (amount <= 0.0) return false
+        viewModelScope.launch {
+            repository.addSavingsEntry(currentMonth, amount, kind.label, kind, tag.trim().ifBlank { null })
+        }
+        return true
+    }
+
+    /**
+     * Validates and records an SMS-confirmed savings/investment contribution for the current month.
+     * SMS-detected transfers (SIPs, brokerages) default to [SavingsKind.INVESTMENT]; the user can
+     * still correct the kind later since it isn't shown as a choice in the confirmation sheet.
+     * @return true if accepted, false if the amount was blank, non-numeric, or not positive.
+     */
+    fun addSavingsFromSms(amountInput: String, description: String): Boolean {
+        val amount = amountInput.trim().toDoubleOrNull() ?: return false
+        if (amount <= 0.0) return false
+        viewModelScope.launch {
+            repository.addSavingsEntry(
+                currentMonth, amount, description.trim().ifBlank { SavingsKind.INVESTMENT.label },
+                SavingsKind.INVESTMENT, null
+            )
+        }
+        return true
+    }
+
+    fun deleteSavingsEntry(id: Long) {
+        viewModelScope.launch { repository.deleteSavingsEntry(id) }
+    }
+
+    /**
      * Validates and adds a transaction to the current month. Raises a [pendingAlert] when the
      * transaction pushes its category to/over 90% of its limit.
      * @return true if accepted, false if the amount was blank, non-numeric, or not positive.
@@ -239,8 +286,9 @@ class ExpenseViewModel(
         viewModelScope.launch { repository.deleteTransaction(id) }
     }
 
-    /** CSV of every transaction across all months, for sharing outside the app. */
-    suspend fun exportTransactionsCsv(): String = buildTransactionsCsv(repository.allTransactions.first())
+    /** CSV of every transaction and savings contribution across all months, for sharing outside the app. */
+    suspend fun exportTransactionsCsv(): String =
+        buildTransactionsCsv(repository.allTransactions.first(), repository.allSavingsEntries.first())
 
     /** Removes all transactions in the current month; budgets and category limits are kept. */
     fun clearCurrentMonthTransactions() {

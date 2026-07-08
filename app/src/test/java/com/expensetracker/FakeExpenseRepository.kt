@@ -3,6 +3,8 @@ package com.expensetracker
 import com.expensetracker.domain.Budget
 import com.expensetracker.domain.CategoryLimit
 import com.expensetracker.domain.ExpenseRepository
+import com.expensetracker.domain.SavingsEntry
+import com.expensetracker.domain.SavingsKind
 import com.expensetracker.domain.Transaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +27,7 @@ class FakeExpenseRepository(
     private val txns = MutableStateFlow<Map<String, List<Transaction>>>(emptyMap())
     private val limits = MutableStateFlow<Map<String, List<CategoryLimit>>>(emptyMap())
     private val incomes = MutableStateFlow<Map<String, Double>>(emptyMap())
+    private val savingsEntriesByMonth = MutableStateFlow<Map<String, List<SavingsEntry>>>(emptyMap())
 
     override fun budget(month: String): Flow<Budget?> =
         budgets.map { it[month]?.let(::Budget) }
@@ -38,6 +41,9 @@ class FakeExpenseRepository(
     override fun income(month: String): Flow<Double?> =
         incomes.map { it[month] }
 
+    override fun savingsEntries(month: String): Flow<List<SavingsEntry>> =
+        savingsEntriesByMonth.map { it[month].orEmpty() }
+
     override val availableMonths: Flow<List<String>> =
         budgets.map { budgetMap ->
             (budgetMap.keys + txns.value.keys).distinct().sortedDescending()
@@ -45,6 +51,9 @@ class FakeExpenseRepository(
 
     override val allTransactions: Flow<List<Transaction>> =
         txns.map { byMonth -> byMonth.values.flatten() }
+
+    override val allSavingsEntries: Flow<List<SavingsEntry>> =
+        savingsEntriesByMonth.map { byMonth -> byMonth.values.flatten() }
 
     override suspend fun ensureMonthInitialized(month: String) {
         if (budgets.value.containsKey(month)) return
@@ -70,6 +79,27 @@ class FakeExpenseRepository(
 
     override suspend fun setIncome(month: String, income: Double) {
         incomes.value = incomes.value + (month to income)
+    }
+
+    override suspend fun addSavingsEntry(
+        month: String,
+        amount: Double,
+        description: String,
+        kind: SavingsKind,
+        tag: String?
+    ) {
+        val current = savingsEntriesByMonth.value[month].orEmpty()
+        val id = nextSavingsEntryId++
+        val entry = SavingsEntry(
+            id = id, amount = amount, description = description, kind = kind, tag = tag, month = month, timestamp = id
+        )
+        savingsEntriesByMonth.value = savingsEntriesByMonth.value + (month to (listOf(entry) + current))
+    }
+
+    override suspend fun deleteSavingsEntry(id: Long) {
+        savingsEntriesByMonth.value = savingsEntriesByMonth.value.mapValues { (_, list) ->
+            list.filterNot { it.id == id }
+        }
     }
 
     override suspend fun addTransaction(month: String, transaction: Transaction) {
@@ -110,4 +140,5 @@ class FakeExpenseRepository(
     }
 
     private var nextId = 1L
+    private var nextSavingsEntryId = 1L
 }

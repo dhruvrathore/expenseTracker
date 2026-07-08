@@ -40,6 +40,7 @@ class SmsConfirmSheetTest {
                 transaction = unknownMerchantTxn,
                 suggestions = listOf("Coffee", "Lunch"),
                 onSave = { _, _, _, _ -> true },
+                onSaveSavings = { _, _ -> true },
                 onDismiss = {}
             )
         }
@@ -56,6 +57,7 @@ class SmsConfirmSheetTest {
                 transaction = unknownMerchantTxn,
                 suggestions = listOf("Coffee", "Lunch"),
                 onSave = { _, _, _, _ -> true },
+                onSaveSavings = { _, _ -> true },
                 onDismiss = {}
             )
         }
@@ -76,6 +78,7 @@ class SmsConfirmSheetTest {
                 transaction = unknownMerchantTxn,
                 suggestions = emptyList(),
                 onSave = { _, _, _, _ -> true },
+                onSaveSavings = { _, _ -> true },
                 onDismiss = {}
             )
         }
@@ -96,6 +99,7 @@ class SmsConfirmSheetTest {
             SmsConfirmSheet(
                 transaction = swiggyTxn,
                 onSave = { _, _, _, _ -> true },
+                onSaveSavings = { _, _ -> true },
                 onDismiss = {}
             )
         }

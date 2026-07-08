@@ -1,5 +1,6 @@
 package com.expensetracker.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -55,6 +57,7 @@ private val sheetFieldShape = RoundedCornerShape(14.dp)
 fun SmsConfirmSheet(
     transaction: ParsedTransaction,
     onSave: (amount: String, description: String, category: String, tag: String) -> Boolean,
+    onSaveSavings: (amount: String, description: String) -> Boolean,
     onDismiss: () -> Unit,
     suggestions: List<String> = emptyList()
 ) {
@@ -73,6 +76,7 @@ fun SmsConfirmSheet(
     var tag by remember(transaction) { mutableStateOf(TagMatcher.tagFor(transaction.merchant) ?: "") }
     var categoryExpanded by remember(transaction) { mutableStateOf(false) }
     var amountError by remember(transaction) { mutableStateOf(false) }
+    var isSavings by remember(transaction) { mutableStateOf(transaction.isSavingsTransfer) }
 
     val matchingSuggestions = remember(description, suggestions) {
         matchingDescriptionSuggestions(description, suggestions)
@@ -100,7 +104,8 @@ fun SmsConfirmSheet(
                 )
             }
             Text(
-                "Found this in an SMS. Review and save it as an expense.",
+                if (isSavings) "Found this in an SMS. Review and save it to savings." else
+                    "Found this in an SMS. Review and save it as an expense.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -123,6 +128,34 @@ fun SmsConfirmSheet(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.secondaryContainer, sheetFieldShape)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "Savings",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        when {
+                            isSavings && transaction.isSavingsTransfer -> "On · looks like a SIP or investment transfer"
+                            isSavings -> "On"
+                            else -> "Off · treated as spending"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+                Switch(checked = isSavings, onCheckedChange = { isSavings = it })
+            }
+
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
@@ -141,36 +174,38 @@ fun SmsConfirmSheet(
                 )
             }
 
-            ExposedDropdownMenuBox(
-                expanded = categoryExpanded,
-                onExpandedChange = { categoryExpanded = it }
-            ) {
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Category") },
-                    leadingIcon = { Icon(Icons.Filled.Category, contentDescription = null) },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded)
-                    },
-                    shape = sheetFieldShape,
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(
+            if (!isSavings) {
+                ExposedDropdownMenuBox(
                     expanded = categoryExpanded,
-                    onDismissRequest = { categoryExpanded = false }
+                    onExpandedChange = { categoryExpanded = it }
                 ) {
-                    Categories.DEFAULTS.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option) },
-                            onClick = {
-                                category = option
-                                categoryExpanded = false
-                            }
-                        )
+                    OutlinedTextField(
+                        value = category,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Category") },
+                        leadingIcon = { Icon(Icons.Filled.Category, contentDescription = null) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded)
+                        },
+                        shape = sheetFieldShape,
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = categoryExpanded,
+                        onDismissRequest = { categoryExpanded = false }
+                    ) {
+                        Categories.DEFAULTS.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    category = option
+                                    categoryExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -188,7 +223,9 @@ fun SmsConfirmSheet(
 
             Button(
                 onClick = {
-                    if (onSave(amount, description, category, tag)) onDismiss() else amountError = true
+                    val accepted = if (isSavings) onSaveSavings(amount, description) else
+                        onSave(amount, description, category, tag)
+                    if (accepted) onDismiss() else amountError = true
                 },
                 shape = sheetFieldShape,
                 modifier = Modifier
@@ -197,7 +234,7 @@ fun SmsConfirmSheet(
             ) {
                 Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(20.dp))
                 Text(
-                    "  Save expense",
+                    if (isSavings) "  Save to savings" else "  Save expense",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
