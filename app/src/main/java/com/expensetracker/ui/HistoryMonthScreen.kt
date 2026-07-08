@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -36,7 +37,8 @@ import com.expensetracker.util.asMonthLabel
 fun HistoryMonthScreen(
     month: String,
     view: MonthView?,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onExport: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -45,6 +47,13 @@ fun HistoryMonthScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (view?.transactions?.isNotEmpty() == true) {
+                        IconButton(onClick = onExport) {
+                            Icon(Icons.Filled.IosShare, contentDescription = "Export this month")
+                        }
                     }
                 }
             )

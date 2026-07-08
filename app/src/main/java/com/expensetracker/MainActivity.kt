@@ -49,6 +49,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.expensetracker.domain.ExpenseRepository
+import com.expensetracker.domain.MonthView
 import com.expensetracker.sms.ParsedTransaction
 import com.expensetracker.sms.SmsNotifier
 import com.expensetracker.sms.SmsTransactionBus
@@ -64,6 +65,7 @@ import com.expensetracker.ui.HomeScreen
 import com.expensetracker.ui.SmsConfirmSheet
 import com.expensetracker.ui.TransactionsScreen
 import com.expensetracker.ui.theme.ExpenseTrackerTheme
+import com.expensetracker.util.buildTransactionsCsv
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -190,7 +192,7 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                     closeDrawer()
                     scope.launch {
                         val csv = viewModel.exportTransactionsCsv()
-                        shareTransactionsCsv(context, csv)
+                        shareTransactionsCsv(context, csv, "expense_history.csv")
                     }
                 }
             }
@@ -219,7 +221,16 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                     onMonthClick = { month -> navController.navigate(Routes.historyMonth(month)) }
                 )
             }
-            historyMonthDestination(viewModel) { navController.popBackStack() }
+            historyMonthDestination(
+                viewModel,
+                onBack = { navController.popBackStack() },
+                onExport = { month, view ->
+                    scope.launch {
+                        val csv = buildTransactionsCsv(view.transactions)
+                        shareTransactionsCsv(context, csv, "expense_$month.csv")
+                    }
+                }
+            )
             composable(Routes.TRANSACTIONS) {
                 TransactionsScreen(
                     transactions = state.transactions,
@@ -304,11 +315,11 @@ private fun RequestSmsPermissions() {
     }
 }
 
-/** Writes [csv] to a cache file and opens the share sheet so it can be sent anywhere (e.g. to Claude). */
-private suspend fun shareTransactionsCsv(context: Context, csv: String) {
+/** Writes [csv] to a cache file named [fileName] and opens the share sheet (e.g. to send to Claude). */
+private suspend fun shareTransactionsCsv(context: Context, csv: String, fileName: String) {
     val uri = withContext(Dispatchers.IO) {
         val exportsDir = File(context.cacheDir, "exports").apply { mkdirs() }
-        val file = File(exportsDir, "expense_history.csv")
+        val file = File(exportsDir, fileName)
         file.writeText(csv)
         FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
     }
@@ -322,13 +333,19 @@ private suspend fun shareTransactionsCsv(context: Context, csv: String) {
 
 private fun NavGraphBuilder.historyMonthDestination(
     viewModel: ExpenseViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onExport: (String, MonthView) -> Unit
 ) {
     composable(Routes.HISTORY_MONTH) { entry ->
         val month = entry.arguments?.getString("month").orEmpty()
         val view by remember(month) { viewModel.observeMonth(month) }
             .collectAsState(initial = null)
-        HistoryMonthScreen(month = month, view = view, onBack = onBack)
+        HistoryMonthScreen(
+            month = month,
+            view = view,
+            onBack = onBack,
+            onExport = { view?.let { onExport(month, it) } }
+        )
     }
 }
 
