@@ -116,6 +116,14 @@ class ExpenseViewModel(
                 initialValue = emptyList()
             )
 
+    /** This month's take-home income, if set. Independent of the monthly spending limit. */
+    val income: StateFlow<Double?> =
+        repository.income(currentMonth).stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = null
+        )
+
     private val _pendingAlert = MutableStateFlow<CategoryAlert?>(null)
     val pendingAlert: StateFlow<CategoryAlert?> = _pendingAlert.asStateFlow()
 
@@ -160,6 +168,17 @@ class ExpenseViewModel(
             return "Only ${available.asCurrency()} of the monthly limit is unallocated"
         }
         viewModelScope.launch { repository.setCategoryLimit(currentMonth, category, limit) }
+        return null
+    }
+
+    /**
+     * Validates and stores this month's income.
+     * @return null on success, or a human-readable error message.
+     */
+    fun setIncome(input: String): String? {
+        val amount = input.trim().toDoubleOrNull() ?: return INVALID_AMOUNT
+        if (amount < 0.0) return INVALID_AMOUNT
+        viewModelScope.launch { repository.setIncome(currentMonth, amount) }
         return null
     }
 

@@ -24,6 +24,7 @@ class FakeExpenseRepository(
     )
     private val txns = MutableStateFlow<Map<String, List<Transaction>>>(emptyMap())
     private val limits = MutableStateFlow<Map<String, List<CategoryLimit>>>(emptyMap())
+    private val incomes = MutableStateFlow<Map<String, Double>>(emptyMap())
 
     override fun budget(month: String): Flow<Budget?> =
         budgets.map { it[month]?.let(::Budget) }
@@ -33,6 +34,9 @@ class FakeExpenseRepository(
 
     override fun categoryLimits(month: String): Flow<List<CategoryLimit>> =
         limits.map { it[month].orEmpty() }
+
+    override fun income(month: String): Flow<Double?> =
+        incomes.map { it[month] }
 
     override val availableMonths: Flow<List<String>> =
         budgets.map { budgetMap ->
@@ -49,6 +53,9 @@ class FakeExpenseRepository(
         limits.value[previous]?.let { prevLimits ->
             limits.value = limits.value + (month to prevLimits.map { it })
         }
+        incomes.value[previous]?.let { prevIncome ->
+            incomes.value = incomes.value + (month to prevIncome)
+        }
     }
 
     override suspend fun setMonthlyLimit(month: String, limit: Double) {
@@ -59,6 +66,10 @@ class FakeExpenseRepository(
         val updated = limits.value[month].orEmpty()
             .filterNot { it.category == category } + CategoryLimit(category, limit)
         limits.value = limits.value + (month to updated)
+    }
+
+    override suspend fun setIncome(month: String, income: Double) {
+        incomes.value = incomes.value + (month to income)
     }
 
     override suspend fun addTransaction(month: String, transaction: Transaction) {

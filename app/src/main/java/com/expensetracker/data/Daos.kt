@@ -67,3 +67,15 @@ interface CategoryLimitDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(limits: List<CategoryLimitEntity>)
 }
+
+@Dao
+interface IncomeDao {
+    @Query("SELECT * FROM income WHERE month = :month LIMIT 1")
+    fun observeIncome(month: String): Flow<IncomeEntity?>
+
+    @Query("SELECT * FROM income WHERE month = :month LIMIT 1")
+    suspend fun getIncome(month: String): IncomeEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(income: IncomeEntity)
+}

@@ -13,7 +13,7 @@ class ExpenseApp : Application() {
 
     val repository: ExpenseRepository by lazy {
         val db = AppDatabase.get(this)
-        RoomExpenseRepository(db.budgetDao(), db.transactionDao(), db.categoryLimitDao())
+        RoomExpenseRepository(db.budgetDao(), db.transactionDao(), db.categoryLimitDao(), db.incomeDao())
     }
 
     /**

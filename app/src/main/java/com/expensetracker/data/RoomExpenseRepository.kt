@@ -12,6 +12,7 @@ class RoomExpenseRepository(
     private val budgetDao: BudgetDao,
     private val transactionDao: TransactionDao,
     private val categoryLimitDao: CategoryLimitDao,
+    private val incomeDao: IncomeDao,
     private val now: () -> Long = System::currentTimeMillis
 ) : ExpenseRepository {
 
@@ -27,6 +28,9 @@ class RoomExpenseRepository(
         categoryLimitDao.observeForMonth(month).map { list ->
             list.map { CategoryLimit(category = it.category, limit = it.limit) }
         }
+
+    override fun income(month: String): Flow<Double?> =
+        incomeDao.observeIncome(month).map { it?.income }
 
     override val availableMonths: Flow<List<String>> =
         budgetDao.observeAvailableMonths()
@@ -44,6 +48,7 @@ class RoomExpenseRepository(
         if (carried.isNotEmpty()) {
             categoryLimitDao.upsertAll(carried)
         }
+        incomeDao.getIncome(previous.month)?.let { incomeDao.upsert(it.copy(month = month)) }
     }
 
     override suspend fun setMonthlyLimit(month: String, limit: Double) {
@@ -54,6 +59,10 @@ class RoomExpenseRepository(
         categoryLimitDao.upsert(
             CategoryLimitEntity(month = month, category = category, limit = limit)
         )
+    }
+
+    override suspend fun setIncome(month: String, income: Double) {
+        incomeDao.upsert(IncomeEntity(month = month, income = income))
     }
 
     override suspend fun addTransaction(month: String, transaction: Transaction) {

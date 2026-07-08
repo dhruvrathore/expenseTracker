@@ -29,3 +29,10 @@ data class CategoryLimitEntity(
     val category: String,
     @ColumnInfo(name = "limit_amount") val limit: Double
 )
+
+/** Monthly take-home income, one row per month ("yyyy-MM"). Independent of the spending limit. */
+@Entity(tableName = "income")
+data class IncomeEntity(
+    @PrimaryKey val month: String,
+    val income: Double
+)

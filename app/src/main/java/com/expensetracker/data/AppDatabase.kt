@@ -9,14 +9,18 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import java.time.YearMonth
 
 @Database(
-    entities = [MonthlyBudgetEntity::class, TransactionEntity::class, CategoryLimitEntity::class],
-    version = 5,
+    entities = [
+        MonthlyBudgetEntity::class, TransactionEntity::class, CategoryLimitEntity::class,
+        IncomeEntity::class
+    ],
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun transactionDao(): TransactionDao
     abstract fun categoryLimitDao(): CategoryLimitDao
+    abstract fun incomeDao(): IncomeDao
 
     companion object {
         // v1 -> v2: add the per-category limits table.
@@ -97,6 +101,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // v5 -> v6: add a monthly salary table, independent of the spending limit.
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `salary` " +
+                        "(`month` TEXT NOT NULL, `salary` REAL NOT NULL, PRIMARY KEY(`month`))"
+                )
+            }
+        }
+
+        // v6 -> v7: rename "salary" to "income" (table, column) to match the renamed UI section.
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `income` " +
+                        "(`month` TEXT NOT NULL, `income` REAL NOT NULL, PRIMARY KEY(`month`))"
+                )
+                db.execSQL("INSERT INTO `income` (`month`, `income`) SELECT `month`, `salary` FROM `salary`")
+                db.execSQL("DROP TABLE `salary`")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -106,8 +132,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "expense-tracker.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
-                    .build().also { instance = it }
+                ).addMigrations(
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7
+                ).build().also { instance = it }
             }
     }
 }

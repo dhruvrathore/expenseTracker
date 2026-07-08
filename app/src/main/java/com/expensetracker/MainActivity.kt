@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.IosShare
@@ -62,6 +63,7 @@ import com.expensetracker.ui.ExpenseViewModelFactory
 import com.expensetracker.ui.HistoryMonthScreen
 import com.expensetracker.ui.HistoryScreen
 import com.expensetracker.ui.HomeScreen
+import com.expensetracker.ui.IncomeScreen
 import com.expensetracker.ui.SmsConfirmSheet
 import com.expensetracker.ui.TransactionsScreen
 import com.expensetracker.ui.theme.ExpenseTrackerTheme
@@ -79,6 +81,7 @@ private object Routes {
     const val HOME = "home"
     const val ADD = "add"
     const val CATEGORIES = "categories"
+    const val INCOME = "income"
     const val HISTORY = "history"
     const val HISTORY_MONTH = "history/{month}"
     const val TRANSACTIONS = "transactions"
@@ -138,6 +141,7 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
     val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(repository))
     val state by viewModel.uiState.collectAsState()
     val categories by viewModel.categoryState.collectAsState()
+    val income by viewModel.income.collectAsState()
     val historyMonths by viewModel.historyMonths.collectAsState()
     val alert by viewModel.pendingAlert.collectAsState()
     val suggestions by viewModel.descriptionSuggestions.collectAsState()
@@ -184,6 +188,10 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                     closeDrawer()
                     if (route != Routes.CATEGORIES) navController.navigate(Routes.CATEGORIES)
                 }
+                DrawerItem(Icons.Filled.AccountBalanceWallet, "Income", route == Routes.INCOME) {
+                    closeDrawer()
+                    if (route != Routes.INCOME) navController.navigate(Routes.INCOME)
+                }
                 DrawerItem(Icons.Filled.DateRange, "History", route == Routes.HISTORY) {
                     closeDrawer()
                     if (route != Routes.HISTORY) navController.navigate(Routes.HISTORY)
@@ -212,6 +220,14 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                     categories = categories,
                     onOpenDrawer = openDrawer,
                     onSetCategoryLimit = viewModel::setCategoryLimit
+                )
+            }
+            composable(Routes.INCOME) {
+                IncomeScreen(
+                    income = income,
+                    categories = categories,
+                    onOpenDrawer = openDrawer,
+                    onSetIncome = viewModel::setIncome
                 )
             }
             composable(Routes.HISTORY) {

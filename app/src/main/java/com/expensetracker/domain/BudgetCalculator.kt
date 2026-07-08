@@ -44,6 +44,15 @@ object BudgetCalculator {
     }
 
     /**
+     * What [amount] (a limit or actual spend) is as a percentage of [income], e.g. ₹2,000 on a
+     * ₹20,000 income is 10.0. Null when either is unset, or income is non-positive.
+     */
+    fun percentOfIncome(amount: Double?, income: Double?): Double? {
+        if (amount == null || income == null || income <= 0.0) return null
+        return amount / income * 100.0
+    }
+
+    /**
      * Alert severity for a category given its [spent] and [limit]:
      * OVER at/above 100%, NEARING at/above [NEARING_THRESHOLD], null otherwise.
      * Returns null for a non-positive limit.

@@ -12,6 +12,9 @@ interface ExpenseRepository {
     fun transactions(month: String): Flow<List<Transaction>>
     fun categoryLimits(month: String): Flow<List<CategoryLimit>>
 
+    /** Take-home income for [month], if set. Independent of the monthly spending limit. */
+    fun income(month: String): Flow<Double?>
+
     /** Every transaction across all months — used to suggest past descriptions. */
     val allTransactions: Flow<List<Transaction>>
 
@@ -27,6 +30,7 @@ interface ExpenseRepository {
 
     suspend fun setMonthlyLimit(month: String, limit: Double)
     suspend fun setCategoryLimit(month: String, category: String, limit: Double)
+    suspend fun setIncome(month: String, income: Double)
     suspend fun addTransaction(month: String, transaction: Transaction)
 
     /** Updates a transaction's editable fields, preserving its month and timestamp. */
