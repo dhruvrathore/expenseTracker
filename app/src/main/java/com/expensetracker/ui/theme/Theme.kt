@@ -13,17 +13,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-private val Green = Color(0xFF1B5E20)
-private val GreenLight = Color(0xFF4C8C4A)
+private val Teal = Color(0xFF0E4B44)
+private val TealLight = Color(0xFF3FA093)
 
 private val LightColors = lightColorScheme(
-    primary = Green,
-    secondary = GreenLight
+    primary = Teal,
+    secondary = TealLight
 )
 
 private val DarkColors = darkColorScheme(
-    primary = GreenLight,
-    secondary = Green
+    primary = TealLight,
+    secondary = Teal
 )
 
 @Composable

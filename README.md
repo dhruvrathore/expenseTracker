@@ -1,4 +1,4 @@
-# Expense Tracker
+# PulseSpend
 
 A lightweight, offline-first Android app for tracking monthly spending against a budget. It detects
 expenses automatically from bank/UPI **SMS** alerts (you confirm before anything is saved) and also
