@@ -82,4 +82,24 @@ class SmsConfirmSheetTest {
 
         composeRule.onAllNodesWithTag("description_suggestions").assertCountEquals(0)
     }
+
+    @Test
+    fun knownMerchant_prefillsAutoTag() {
+        val swiggyTxn = ParsedTransaction(
+            amount = 350.0,
+            merchant = "SWIGGY ORDER",
+            isDebit = true,
+            smsTimestamp = 0L
+        )
+
+        composeRule.setContent {
+            SmsConfirmSheet(
+                transaction = swiggyTxn,
+                onSave = { _, _, _, _ -> true },
+                onDismiss = {}
+            )
+        }
+
+        composeRule.onNodeWithTag("tag_field").assert(hasText("Swiggy"))
+    }
 }

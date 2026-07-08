@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.expensetracker.domain.Categories
 import com.expensetracker.sms.CategoryMatcher
 import com.expensetracker.sms.ParsedTransaction
+import com.expensetracker.sms.TagMatcher
 
 private val sheetFieldShape = RoundedCornerShape(14.dp)
 
@@ -69,7 +70,7 @@ fun SmsConfirmSheet(
     var category by remember(transaction) {
         mutableStateOf(CategoryMatcher.categorize(transaction.merchant))
     }
-    var tag by remember(transaction) { mutableStateOf("") }
+    var tag by remember(transaction) { mutableStateOf(TagMatcher.tagFor(transaction.merchant) ?: "") }
     var categoryExpanded by remember(transaction) { mutableStateOf(false) }
     var amountError by remember(transaction) { mutableStateOf(false) }
 
@@ -182,7 +183,7 @@ fun SmsConfirmSheet(
                 leadingIcon = { Icon(Icons.Filled.Label, contentDescription = null) },
                 singleLine = true,
                 shape = sheetFieldShape,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().testTag("tag_field")
             )
 
             Button(
