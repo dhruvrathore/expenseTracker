@@ -1,11 +1,15 @@
 package com.expensetracker
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -19,8 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.DrawerValue
@@ -36,8 +40,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -68,6 +74,7 @@ import com.expensetracker.ui.SmsConfirmSheet
 import com.expensetracker.ui.TransactionsScreen
 import com.expensetracker.ui.theme.ExpenseTrackerTheme
 import com.expensetracker.util.buildTransactionsCsv
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -158,6 +165,8 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
     val currentEntry by navController.currentBackStackEntryAsState()
     val route = currentEntry?.destination?.route
 
+    val downloadCsv = rememberCsvDownloader(context = context, scope = scope)
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -196,11 +205,11 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                     closeDrawer()
                     if (route != Routes.HISTORY) navController.navigate(Routes.HISTORY)
                 }
-                DrawerItem(Icons.Filled.IosShare, "Export data", selected = false) {
+                DrawerItem(Icons.Filled.Download, "Export data", selected = false) {
                     closeDrawer()
                     scope.launch {
                         val csv = viewModel.exportTransactionsCsv()
-                        shareTransactionsCsv(context, csv, "expense_history.csv")
+                        downloadCsv("expense_history.csv", csv)
                     }
                 }
             }
@@ -241,10 +250,8 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                 viewModel,
                 onBack = { navController.popBackStack() },
                 onExport = { month, view ->
-                    scope.launch {
-                        val csv = buildTransactionsCsv(view.transactions)
-                        shareTransactionsCsv(context, csv, "expense_$month.csv")
-                    }
+                    val csv = buildTransactionsCsv(view.transactions)
+                    downloadCsv("expense_$month.csv", csv)
                 }
             )
             composable(Routes.TRANSACTIONS) {
@@ -331,20 +338,81 @@ private fun RequestSmsPermissions() {
     }
 }
 
-/** Writes [csv] to a cache file named [fileName] and opens the share sheet (e.g. to send to Claude). */
-private suspend fun shareTransactionsCsv(context: Context, csv: String, fileName: String) {
-    val uri = withContext(Dispatchers.IO) {
-        val exportsDir = File(context.cacheDir, "exports").apply { mkdirs() }
-        val file = File(exportsDir, fileName)
-        file.writeText(csv)
-        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+/**
+ * Returns a function that downloads a CSV export: saves it to the public Downloads folder, then
+ * opens the share sheet on the same file (e.g. to send it straight to Claude). On Android 9 and
+ * below, writing to the public Downloads folder requires [Manifest.permission.WRITE_EXTERNAL_STORAGE],
+ * so this requests it first if needed.
+ */
+@Composable
+private fun rememberCsvDownloader(context: Context, scope: CoroutineScope): (fileName: String, csv: String) -> Unit {
+    var pendingExport by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val (fileName, csv) = pendingExport ?: return@rememberLauncherForActivityResult
+        pendingExport = null
+        if (granted) {
+            scope.launch { saveAndShareCsv(context, csv, fileName) }
+        } else {
+            Toast.makeText(context, "Storage permission is required to save the export", Toast.LENGTH_LONG).show()
+        }
     }
-    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/csv"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    return { fileName, csv ->
+        val needsPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            pendingExport = fileName to csv
+            permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        } else {
+            scope.launch { saveAndShareCsv(context, csv, fileName) }
+        }
     }
-    context.startActivity(Intent.createChooser(sendIntent, "Export spending history"))
+}
+
+/** Saves [csv] as [fileName] in the public Downloads folder, then opens the share sheet on it. */
+private suspend fun saveAndShareCsv(context: Context, csv: String, fileName: String) {
+    val result = withContext(Dispatchers.IO) {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: error("Could not create download entry")
+                resolver.openOutputStream(uri)?.use { it.write(csv.toByteArray()) }
+                    ?: error("Could not open output stream")
+                uri
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                downloadsDir.mkdirs()
+                val file = File(downloadsDir, fileName)
+                file.writeText(csv)
+                FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            }
+        }
+    }
+
+    val uri = result.getOrNull()
+    if (uri == null) {
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "Failed to save export", Toast.LENGTH_LONG).show()
+        }
+        return
+    }
+
+    withContext(Dispatchers.Main) {
+        Toast.makeText(context, "Saved to Downloads/$fileName", Toast.LENGTH_LONG).show()
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(sendIntent, "Export spending history"))
+    }
 }
 
 private fun NavGraphBuilder.historyMonthDestination(
