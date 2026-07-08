@@ -13,12 +13,14 @@ import com.expensetracker.domain.MonthView
 import com.expensetracker.domain.Transaction
 import com.expensetracker.domain.TransactionSuggestions
 import com.expensetracker.util.asCurrency
+import com.expensetracker.util.buildTransactionsCsv
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -217,6 +219,9 @@ class ExpenseViewModel(
     fun deleteTransaction(id: Long) {
         viewModelScope.launch { repository.deleteTransaction(id) }
     }
+
+    /** CSV of every transaction across all months, for sharing outside the app. */
+    suspend fun exportTransactionsCsv(): String = buildTransactionsCsv(repository.allTransactions.first())
 
     /** Removes all transactions in the current month; budgets and category limits are kept. */
     fun clearCurrentMonthTransactions() {

@@ -1,6 +1,7 @@
 package com.expensetracker
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.DrawerValue
@@ -39,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
@@ -61,7 +64,10 @@ import com.expensetracker.ui.HomeScreen
 import com.expensetracker.ui.SmsConfirmSheet
 import com.expensetracker.ui.TransactionsScreen
 import com.expensetracker.ui.theme.ExpenseTrackerTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.time.YearMonth
 
 private fun daysInMonth(month: String): Int =
@@ -137,6 +143,7 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
 
     RequestSmsPermissions()
 
+    val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
@@ -178,6 +185,13 @@ private fun ExpenseTrackerApp(repository: ExpenseRepository) {
                 DrawerItem(Icons.Filled.DateRange, "History", route == Routes.HISTORY) {
                     closeDrawer()
                     if (route != Routes.HISTORY) navController.navigate(Routes.HISTORY)
+                }
+                DrawerItem(Icons.Filled.IosShare, "Export data", selected = false) {
+                    closeDrawer()
+                    scope.launch {
+                        val csv = viewModel.exportTransactionsCsv()
+                        shareTransactionsCsv(context, csv)
+                    }
                 }
             }
         }
@@ -288,6 +302,22 @@ private fun RequestSmsPermissions() {
         }
         if (missing.isNotEmpty()) launcher.launch(missing.toTypedArray())
     }
+}
+
+/** Writes [csv] to a cache file and opens the share sheet so it can be sent anywhere (e.g. to Claude). */
+private suspend fun shareTransactionsCsv(context: Context, csv: String) {
+    val uri = withContext(Dispatchers.IO) {
+        val exportsDir = File(context.cacheDir, "exports").apply { mkdirs() }
+        val file = File(exportsDir, "expense_history.csv")
+        file.writeText(csv)
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/csv"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(sendIntent, "Export spending history"))
 }
 
 private fun NavGraphBuilder.historyMonthDestination(
